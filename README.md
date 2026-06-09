@@ -1,4 +1,7 @@
 # Fashion Backend - Hệ Thống Quản Lý Thương Mại Điện Tử Thời Trang
+
+**Fashion Backend** là hệ thống xử lý trung tâm cho dự án Website Đồ án Thời trang, được xây dựng trên nền tảng Spring Boot hiện đại, cung cấp đầy đủ các tính năng từ quản lý sản phẩm, đơn hàng đến tích hợp Trí tuệ nhân tạo (AI chatbot).
+
 ---
 
 ## 🚀 Công Nghệ Sử Dụng
