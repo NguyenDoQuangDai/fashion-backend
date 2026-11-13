@@ -4,6 +4,8 @@ import com.example.fashion_backend.dto.user.UserProfileResponse;
 import com.example.fashion_backend.dto.user.UserProfileUpdateRequest;
 import com.example.fashion_backend.entity.UserEntity;
 import com.example.fashion_backend.repository.UserRepository;
+import com.example.fashion_backend.repository.ProductRepository;
+import com.example.fashion_backend.repository.UserProductViewRepository;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -12,9 +14,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UserProfileService {
     private final UserRepository userRepository;
+    private final ProductRepository productRepository;
+    private final UserProductViewRepository views;
 
-    public UserProfileService(UserRepository userRepository) {
+    public UserProfileService(UserRepository userRepository, ProductRepository productRepository,
+                              UserProductViewRepository views) {
         this.userRepository = userRepository;
+        this.productRepository = productRepository;
+        this.views = views;
+    }
+
+    @Transactional
+    public void recordProductView(UUID userId, String productId) {
+        if (productId == null || productId.isBlank() || !productRepository.existsById(productId)) {
+            throw new IllegalArgumentException("Product not found");
+        }
+        OffsetDateTime now = OffsetDateTime.now(java.time.ZoneOffset.UTC);
+        views.recordView(userId, productId, now, now.minusMinutes(30));
     }
 
     @Transactional(readOnly = true)
@@ -28,6 +44,10 @@ public class UserProfileService {
     public UserProfileResponse updateProfile(UUID userId, UserProfileUpdateRequest request) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if ((request.getPriceMin() != null && request.getPriceMin().signum() < 0)
+                || (request.getPriceMax() != null && request.getPriceMax().signum() < 0)) {
+            throw new IllegalArgumentException("Budget must be nonnegative");
+        }
         if (request.getPriceMin() != null && request.getPriceMax() != null
                 && request.getPriceMin().compareTo(request.getPriceMax()) > 0) {
             throw new IllegalArgumentException("priceMin must be <= priceMax");

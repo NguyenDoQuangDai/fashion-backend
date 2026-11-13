@@ -8,6 +8,9 @@ import java.util.List;
 public interface ProductRepository extends JpaRepository<ProductEntity, String> {
     @Override
     @EntityGraph(attributePaths = {"colors", "colors.images", "colors.sizes"})
+    List<ProductEntity> findAllById(Iterable<String> ids);
+    @Override
+    @EntityGraph(attributePaths = {"colors", "colors.images", "colors.sizes"})
     List<ProductEntity> findAll();
 
     @Override

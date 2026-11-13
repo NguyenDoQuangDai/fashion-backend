@@ -2,6 +2,8 @@ package com.example.fashion_backend.controller;
 
 import com.example.fashion_backend.model.Product;
 import com.example.fashion_backend.service.RecommendationService;
+import com.example.fashion_backend.security.UserPrincipal;
+import org.springframework.security.core.Authentication;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
@@ -27,12 +29,15 @@ public class RecommendationController {
             @RequestParam(value = "tag", required = false) String tag,
             @RequestParam(value = "priceMin", required = false) BigDecimal priceMin,
             @RequestParam(value = "priceMax", required = false) BigDecimal priceMax,
-            @RequestParam(value = "historyIds", required = false) String historyIds) {
+            @RequestParam(value = "historyIds", required = false) String historyIds,
+            Authentication authentication) {
         List<String> ids = historyIds == null || historyIds.isBlank() ? List.of() :
                 Arrays.stream(historyIds.split(","))
                         .map(String::trim)
                         .filter(s -> !s.isEmpty())
                         .collect(Collectors.toList());
-        return recommendationService.recommend(size, gender, tag, priceMin, priceMax, ids);
+        var userId = authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal
+                ? principal.getUser().getId() : null;
+        return recommendationService.recommend(size, gender, tag, priceMin, priceMax, ids, userId);
     }
 }

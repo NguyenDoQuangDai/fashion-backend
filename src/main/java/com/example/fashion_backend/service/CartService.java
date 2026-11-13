@@ -29,16 +29,24 @@ public class CartService {
 
     @Transactional(readOnly = true)
     public List<CartItem> getCartItems(String clientId) {
-        String guestId = normalizeClientId(clientId);
-        return cartRepository.findByGuestId(guestId)
+        return getCartItems(null, clientId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CartItem> getCartItems(UUID userId, String clientId) {
+        return findCart(userId, clientId)
                 .map(this::mapToDto)
                 .orElseGet(ArrayList::new);
     }
 
     @Transactional
     public void addToCart(String clientId, CartItem item) {
-        String guestId = normalizeClientId(clientId);
-        CartEntity cart = cartRepository.findByGuestId(guestId).orElseGet(() -> createCart(guestId));
+        addToCart(null, clientId, item);
+    }
+
+    @Transactional
+    public void addToCart(UUID userId, String clientId, CartItem item) {
+        CartEntity cart = findCart(userId, clientId).orElseGet(() -> newCart(userId, clientId));
         List<CartItemEntity> items = cart.getItems();
         if (items == null) {
             items = new ArrayList<>();
@@ -68,8 +76,12 @@ public class CartService {
 
     @Transactional
     public void updateQuantity(String clientId, CartItem item) {
-        String guestId = normalizeClientId(clientId);
-        CartEntity cart = cartRepository.findByGuestId(guestId).orElseGet(() -> createCart(guestId));
+        updateQuantity(null, clientId, item);
+    }
+
+    @Transactional
+    public void updateQuantity(UUID userId, String clientId, CartItem item) {
+        CartEntity cart = findCart(userId, clientId).orElseGet(() -> newCart(userId, clientId));
         List<CartItemEntity> items = cart.getItems();
         if (items == null) {
             items = new ArrayList<>();
@@ -92,6 +104,8 @@ public class CartService {
             entity.setCart(cart);
             entity.setProductId(item.getProductId());
             entity.setQuantity(item.getQuantity());
+            entity.setColorVariantId(variantRef.colorVariantId);
+            entity.setSizeVariantId(variantRef.sizeVariantId);
             items.add(entity);
         }
         cartRepository.save(cart);
@@ -99,10 +113,41 @@ public class CartService {
 
     @Transactional
     public void removeItem(String clientId, String productId) {
-        String guestId = normalizeClientId(clientId);
-        cartRepository.findByGuestId(guestId).ifPresent(cart -> {
+        removeItem(null, clientId, productId);
+    }
+
+    @Transactional
+    public void removeItem(UUID userId, String clientId, String productId) {
+        findCart(userId, clientId).ifPresent(cart -> {
             if (cart.getItems() != null) {
                 cart.getItems().removeIf(item -> item.getProductId().equals(productId));
+            }
+            cartRepository.save(cart);
+        });
+    }
+
+    private Optional<CartEntity> findCart(UUID userId, String clientId) {
+        return userId == null ? cartRepository.findByGuestId(normalizeClientId(clientId))
+                : cartRepository.findByUserId(userId);
+    }
+
+    private CartEntity newCart(UUID userId, String clientId) {
+        return userId == null ? createCart(normalizeClientId(clientId)) : createUserCart(userId);
+    }
+
+    @Transactional
+    public void removePurchasedItems(UUID userId, String clientId, List<CartItem> purchased) {
+        findCart(userId, clientId).ifPresent(cart -> {
+            if (cart.getItems() == null || purchased == null) return;
+            for (CartItem item : purchased) {
+                VariantRef variant = resolveVariant(item);
+                cart.getItems().removeIf(existing -> {
+                    if (!Objects.equals(existing.getProductId(), item.getProductId())
+                            || !Objects.equals(existing.getColorVariantId(), variant.colorVariantId)
+                            || !Objects.equals(existing.getSizeVariantId(), variant.sizeVariantId)) return false;
+                    existing.setQuantity(Math.max(0, existing.getQuantity() - item.getQuantity()));
+                    return existing.getQuantity() == 0;
+                });
             }
             cartRepository.save(cart);
         });

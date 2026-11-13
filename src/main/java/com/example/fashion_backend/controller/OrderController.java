@@ -33,7 +33,7 @@ public class OrderController {
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponse> get(@PathVariable String id, Authentication authentication) {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
-        OrderResponse response = orderService.getOrder(UUID.fromString(id));
+        OrderResponse response = orderService.getOrderForUser(UUID.fromString(id), principal.getUser().getId());
         if (response == null) {
             return ResponseEntity.notFound().build();
         }

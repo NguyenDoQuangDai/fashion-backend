@@ -8,6 +8,8 @@ public class ChatSuggestedProduct {
     private String slug;
     private BigDecimal price;
     private String coverImage;
+    private String matchedColor;
+    private String matchedSize;
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -23,4 +25,8 @@ public class ChatSuggestedProduct {
 
     public String getCoverImage() { return coverImage; }
     public void setCoverImage(String coverImage) { this.coverImage = coverImage; }
+    public String getMatchedColor() { return matchedColor; }
+    public void setMatchedColor(String value) { matchedColor = value; }
+    public String getMatchedSize() { return matchedSize; }
+    public void setMatchedSize(String value) { matchedSize = value; }
 }

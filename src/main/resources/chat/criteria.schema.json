@@ -1,0 +1,192 @@
+{
+  "type": "object",
+  "properties": {
+    "intent": {
+      "type": "string",
+      "enum": [
+        "product_search",
+        "product_refinement",
+        "greeting",
+        "unsupported_store_request",
+        "out_of_scope",
+        "clarification"
+      ]
+    },
+    "category": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "ao",
+        "quan",
+        "vay",
+        "bo",
+        "phu_kien",
+        null
+      ],
+      "description": "null when no category was explicitly requested, including gender-only searches. phu_kien means accessories, not unknown category."
+    },
+    "productType": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 40,
+      "enum": [
+        "polo",
+        "thun",
+        "so mi",
+        "khoac",
+        "short",
+        "kaki",
+        "jeans",
+        "the thao",
+        "len",
+        "ni",
+        "phao",
+        "giu nhiet",
+        "chong nang",
+        "ba lo",
+        "tay",
+        "au",
+        "boxer",
+        "brief",
+        "tat",
+        "chan vay",
+        null
+      ],
+      "description": "null for generic ao/quan. ao phong = thun. Never infer polo/khoac from generic ao."
+    },
+    "gender": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "nam",
+        "nu",
+        "unisex",
+        null
+      ],
+      "description": "null if not requested. unisex only when explicitly mentioned."
+    },
+    "priceMin": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1000000000,
+      "description": "Only lower bound. null for duoi/khong qua. khoang X => X-50000."
+    },
+    "priceMax": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1000000000,
+      "description": "Only upper bound. duoi X => exactly X (not X-1). khoang X => X+50000."
+    },
+    "priceMinInclusive": {
+      "type": "boolean",
+      "description": "false only for strict lower bound tren. true when priceMin=null."
+    },
+    "priceMaxInclusive": {
+      "type": "boolean",
+      "description": "false for duoi / duoi muc / thap hon. true for khong qua/toi da or null upper bound."
+    },
+    "colorsInclude": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 40
+      },
+      "maxItems": 5
+    },
+    "colorsExclude": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 40
+      },
+      "maxItems": 5
+    },
+    "size": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 10
+    },
+    "materialPreferences": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 40
+      },
+      "maxItems": 5
+    },
+    "occasion": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "di_lam",
+        "phong_van",
+        "the_thao",
+        "di_choi",
+        "giu_am",
+        "chong_nang",
+        null
+      ]
+    },
+    "quantity": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "description": "Default 5. Only change when number of suggested products is explicitly requested; removing budget does not change quantity."
+    },
+    "sort": {
+      "type": "string",
+      "enum": [
+        "relevance",
+        "price_asc",
+        "price_desc"
+      ]
+    },
+    "needsClarification": {
+      "type": "boolean",
+      "description": "true for contradictions, two categories, interview outfit without category, and re hon / cheaper without a user-provided new budget."
+    },
+    "clarificationQuestion": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 180
+    }
+  },
+  "required": [
+    "intent",
+    "category",
+    "productType",
+    "gender",
+    "priceMin",
+    "priceMax",
+    "priceMinInclusive",
+    "priceMaxInclusive",
+    "colorsInclude",
+    "colorsExclude",
+    "size",
+    "materialPreferences",
+    "occasion",
+    "quantity",
+    "sort",
+    "needsClarification",
+    "clarificationQuestion"
+  ],
+  "additionalProperties": false
+}

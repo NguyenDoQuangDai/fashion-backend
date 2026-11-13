@@ -2,6 +2,7 @@ package com.example.fashion_backend.controller;
 
 import com.example.fashion_backend.dto.auth.AuthResponse;
 import com.example.fashion_backend.dto.auth.ForgotRequest;
+import com.example.fashion_backend.dto.auth.GoogleAuthRequest;
 import com.example.fashion_backend.dto.auth.LoginRequest;
 import com.example.fashion_backend.dto.auth.MessageResponse;
 import com.example.fashion_backend.dto.auth.RefreshRequest;
@@ -35,6 +36,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> google(@Valid @RequestBody GoogleAuthRequest request) {
+        return ResponseEntity.ok(authService.googleLogin(request));
     }
 
     @PostMapping("/refresh")

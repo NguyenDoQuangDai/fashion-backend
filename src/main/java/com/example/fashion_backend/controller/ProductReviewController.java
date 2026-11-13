@@ -8,6 +8,11 @@ import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,8 +36,12 @@ public class ProductReviewController {
         return ResponseEntity.ok(reviewService.listByProduct(productId));
     }
 
-    @PostMapping
-    public ResponseEntity<ReviewResponse> create(@Valid @RequestBody ReviewRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(reviewService.create(request));
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ReviewResponse> create(
+            @Valid @RequestPart("review") ReviewRequest request,
+            @RequestPart(value = "images", required = false) MultipartFile[] images,
+            Authentication authentication) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(reviewService.create(request, authentication, images));
     }
 }

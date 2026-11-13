@@ -137,7 +137,7 @@ public class ProductService {
         return entities.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
-    private Product mapToDto(ProductEntity entity) {
+    public Product mapToDto(ProductEntity entity) {
         Product dto = new Product();
         dto.setId(entity.getId());
         dto.setSlug(entity.getSlug());
@@ -146,6 +146,7 @@ public class ProductService {
         dto.setGender(entity.getGender());
         dto.setCategoryName(entity.getCategoryName());
         dto.setCategorySlug(entity.getCategorySlug());
+        dto.setType(entity.getType());
         dto.setShortDescription(entity.getShortDescription());
         dto.setDescription(entity.getDescription());
         dto.setCanonicalUrl(entity.getCanonicalUrl());
@@ -199,6 +200,7 @@ public class ProductService {
             size.setSizeId(entity.getSizeId());
             size.setSize(entity.getSizeName());
             size.setInventory(entity.getInventory() == null ? 0 : entity.getInventory());
+            size.setInventoryRevision(entity.getInventoryRevision());
             size.setSku(entity.getSku());
             size.setPrice(entity.getPrice());
             size.setAvailable(entity.getInventory() != null && entity.getInventory() > 0);

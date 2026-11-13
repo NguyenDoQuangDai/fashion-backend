@@ -2,6 +2,7 @@ package com.example.fashion_backend.service;
 
 import com.example.fashion_backend.dto.auth.AuthResponse;
 import com.example.fashion_backend.dto.auth.ForgotRequest;
+import com.example.fashion_backend.dto.auth.GoogleAuthRequest;
 import com.example.fashion_backend.dto.auth.LoginRequest;
 import com.example.fashion_backend.dto.auth.MessageResponse;
 import com.example.fashion_backend.dto.auth.RefreshRequest;
@@ -13,12 +14,15 @@ import com.example.fashion_backend.entity.PasswordResetTokenEntity;
 import com.example.fashion_backend.entity.RefreshTokenEntity;
 import com.example.fashion_backend.entity.RoleEntity;
 import com.example.fashion_backend.entity.UserEntity;
+import com.example.fashion_backend.entity.UserIdentityEntity;
 import com.example.fashion_backend.repository.EmailVerificationTokenRepository;
 import com.example.fashion_backend.repository.PasswordResetTokenRepository;
 import com.example.fashion_backend.repository.RefreshTokenRepository;
 import com.example.fashion_backend.repository.RoleRepository;
 import com.example.fashion_backend.repository.UserRepository;
+import com.example.fashion_backend.repository.UserIdentityRepository;
 import com.example.fashion_backend.security.JwtService;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -30,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthService {
     private final UserRepository userRepository;
+    private final UserIdentityRepository userIdentityRepository;
     private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
@@ -38,11 +43,13 @@ public class AuthService {
     private final JwtService jwtService;
     private final MailService mailService;
     private final CartService cartService;
+    private final GoogleIdTokenService googleIdTokenService;
     private final long refreshDays;
     private final String frontendBaseUrl;
 
     public AuthService(
             UserRepository userRepository,
+            UserIdentityRepository userIdentityRepository,
             RoleRepository roleRepository,
             RefreshTokenRepository refreshTokenRepository,
             EmailVerificationTokenRepository emailVerificationTokenRepository,
@@ -51,10 +58,12 @@ public class AuthService {
             JwtService jwtService,
             MailService mailService,
             CartService cartService,
+            GoogleIdTokenService googleIdTokenService,
             @Value("${app.jwt.refresh-days:7}") long refreshDays,
             @Value("${app.backend-base-url:http://localhost:8080}") String backendBaseUrl,
             @Value("${app.frontend-base-url:http://localhost:5173}") String frontendBaseUrl) {
         this.userRepository = userRepository;
+        this.userIdentityRepository = userIdentityRepository;
         this.roleRepository = roleRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.emailVerificationTokenRepository = emailVerificationTokenRepository;
@@ -63,6 +72,7 @@ public class AuthService {
         this.jwtService = jwtService;
         this.mailService = mailService;
         this.cartService = cartService;
+        this.googleIdTokenService = googleIdTokenService;
         this.refreshDays = refreshDays;
         this.frontendBaseUrl = frontendBaseUrl;
     }
@@ -100,32 +110,55 @@ public class AuthService {
         emailVerificationTokenRepository.save(verifyToken);
 
         String verifyLink = frontendBaseUrl + "/verify?token=" + verifyToken.getToken();
-
-        String customerName = (user.getFullName() != null && !user.getFullName().isBlank()) 
-        ? user.getFullName() 
-        : "Quý khách";
+        String customerName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName() : "Quý khách";
 
         String registerSubject = "✨ Chào mừng bạn đến với 5SMan - Xác thực tài khoản của bạn";
         String registerBody = """
-        Xin chào %s,
-        
-        Cảm ơn bạn đã đăng ký thành viên tại 5SMan! 
-        Để kích hoạt tài khoản và bắt đầu trải nghiệm không gian mua sắm thời trang của chúng tôi, bạn vui lòng nhấn vào liên kết xác thực bên dưới:
-        
-        🔗 %s
-        
-        (Nếu không thể click trực tiếp, bạn hãy sao chép liên kết trên và dán vào thanh địa chỉ của trình duyệt)
-        
-        ⚠️ Lưu ý: Vì lý do bảo mật, liên kết này chỉ có hiệu lực trong vòng 2 giờ.
-        Nếu bạn không thực hiện yêu cầu này, xin vui lòng bỏ qua email.
-        
-        Trân trọng,
-        Đội ngũ 5SMan.
-        """.formatted(customerName, verifyLink);
+        <!DOCTYPE html>
+        <html>
+        <body style="margin:0; padding:0; background-color:#f4f5f7; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+          <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="background-color:#f4f5f7; padding:40px 0;">
+            <tr>
+              <td align="center">
+                <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.08);">
+                  <tr>
+                    <td style="background-color:#0f172a; padding:30px; text-align:center;">
+                      <h1 style="color:#ffffff; margin:0; font-size:26px; letter-spacing:3px; font-weight:800;">5SMAN</h1>
+                      <p style="color:#94a3b8; margin:5px 0 0 0; font-size:12px; text-transform:uppercase; letter-spacing:1px;">Gentlemen's Fashion Style</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:40px 30px; color:#334155;">
+                      <h2 style="margin-top:0; color:#0f172a; font-size:20px; text-align:center;">Xác thực tài khoản</h2>
+                      <p style="font-size:15px; line-height:1.6;">Xin chào <strong>%s</strong>,</p>
+                      <p style="font-size:15px; line-height:1.6;">Cảm ơn bạn đã đăng ký thành viên tại <strong>5SMan</strong>! Vui lòng bấm vào nút bên dưới để kích hoạt tài khoản của bạn và trải nghiệm mua sắm ngay lập tức.</p>
+                      
+                      <div style="text-align:center; margin:35px 0;">
+                        <a href="%s" style="background-color:#0f172a; color:#ffffff; padding:14px 32px; border-radius:8px; text-decoration:none; font-weight:bold; font-size:15px; display:inline-block; box-shadow:0 4px 12px rgba(15,23,42,0.25);">XÁC THỰC TÀI KHOẢN</a>
+                      </div>
+                      
+                      <p style="font-size:13px; color:#64748b; background-color:#f8fafc; padding:15px; border-radius:8px; border-left:4px solid #0f172a; line-height:1.5;">
+                        ⚠️ <strong>Lưu ý:</strong> Đường dẫn này chỉ có hiệu lực trong vòng <strong>1 giờ</strong>.<br>
+                        Nếu không bấm được nút trên, hãy sao chép liên kết này dán vào trình duyệt:<br>
+                        <a href="%s" style="color:#2563eb; word-break:break-all;">%s</a>
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="background-color:#f8fafc; padding:20px; text-align:center; font-size:12px; color:#94a3b8; border-top:1px solid #e2e8f0;">
+                      &copy; 5SMan Fashion Store. All rights reserved.
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+        """.formatted(customerName, verifyLink, verifyLink, verifyLink);
 
         mailService.send(user.getEmail(), registerSubject, registerBody);
 
-        //MessageResponse response = new MessageResponse("Please verify your email to activate account");
         AuthResponse authResponse = new AuthResponse();
         authResponse.setAccessToken(null);
         authResponse.setRefreshToken(null);
@@ -140,6 +173,9 @@ public class AuthService {
         if (user.getEnabled() == null || !user.getEnabled()) {
             throw new IllegalArgumentException("Account not verified");
         }
+        if (user.getPasswordHash() == null) {
+          throw new IllegalArgumentException("Password login is not enabled for this account");
+        }
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Invalid credentials");
         }
@@ -150,6 +186,56 @@ public class AuthService {
         String refreshToken = createRefreshToken(user);
         return toAuthResponse(user, accessToken, refreshToken);
     }
+
+      @Transactional
+      public AuthResponse googleLogin(GoogleAuthRequest request) {
+        GoogleIdToken.Payload payload = googleIdTokenService.verify(request.getCredential());
+        String provider = "GOOGLE";
+        UserIdentityEntity identity = userIdentityRepository
+            .findByProviderAndProviderSubject(provider, payload.getSubject())
+            .orElse(null);
+
+        UserEntity user;
+        if (identity != null) {
+          user = identity.getUser();
+        } else {
+          String email = payload.getEmail().trim().toLowerCase();
+          user = userRepository.findByEmail(email).orElse(null);
+          if (user == null) {
+            RoleEntity userRole = roleRepository.findByName("USER")
+                .orElseGet(() -> roleRepository.save(createRole("USER")));
+            user = new UserEntity();
+            user.setEmail(email);
+            user.setPasswordHash(null);
+                Object nameClaim = payload.get("name");
+                user.setFullName(nameClaim == null ? null : nameClaim.toString());
+            user.setEnabled(true);
+            user.setCreatedAt(OffsetDateTime.now());
+            user.setUpdatedAt(OffsetDateTime.now());
+            user.setRoles(List.of(userRole));
+            user = userRepository.save(user);
+          }
+
+          identity = new UserIdentityEntity();
+          identity.setUser(user);
+          identity.setProvider(provider);
+          identity.setProviderSubject(payload.getSubject());
+          identity.setProviderEmail(email);
+          identity.setCreatedAt(OffsetDateTime.now());
+          identity.setUpdatedAt(OffsetDateTime.now());
+          userIdentityRepository.save(identity);
+        }
+
+        if (user.getEnabled() == null || !user.getEnabled()) {
+          throw new IllegalArgumentException("Account disabled");
+        }
+        if (request.getGuestCartId() != null && !request.getGuestCartId().isBlank()) {
+          cartService.mergeGuestCartToUser(user.getId(), request.getGuestCartId());
+        }
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = createRefreshToken(user);
+        return toAuthResponse(user, accessToken, refreshToken);
+      }
 
     @Transactional
     public AuthResponse refresh(RefreshRequest request) {
@@ -194,28 +280,49 @@ public class AuthService {
         passwordResetTokenRepository.save(token);
 
         String resetLink = frontendBaseUrl + "/reset?token=" + token.getToken();
-        
-        // Lấy tên khách hàng, nếu không có thì gọi là "Quý khách"
-        String customerName = (user.getFullName() != null && !user.getFullName().isBlank()) 
-        ? user.getFullName() 
-        : "Quý khách";
+        String customerName = (user.getFullName() != null && !user.getFullName().isBlank()) ? user.getFullName() : "Quý khách";
 
         String forgotSubject = "🔒 [5SMan] Yêu cầu đặt lại mật khẩu của bạn";
         String forgotBody = """
-        Xin chào %s,
-        
-        Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu cho tài khoản 5SMan gắn liền với email này. 
-        Bạn vui lòng nhấn vào liên kết dưới đây để tiến hành thiết lập mật khẩu mới:
-        
-        🔗 %s
-        
-        ⚠️ Lưu ý: Đường dẫn này chỉ có hiệu lực trong vòng 1 giờ.
-        
-        🛡️ Khuyến cáo bảo mật: Nếu bạn không thực hiện yêu cầu đặt lại mật khẩu này, tài khoản của bạn vẫn an toàn và bạn hoàn toàn có thể bỏ qua email này. Không chia sẻ liên kết này với bất kỳ ai.
-        
-        Trân trọng,
-        Đội ngũ bảo mật 5SMan.
-            """.formatted(customerName, resetLink);
+        <!DOCTYPE html>
+        <html>
+        <body style="margin:0; padding:0; background-color:#f4f5f7; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+          <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="background-color:#f4f5f7; padding:40px 0;">
+            <tr>
+              <td align="center">
+                <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.08);">
+                  <tr>
+                    <td style="background-color:#0f172a; padding:30px; text-align:center;">
+                      <h1 style="color:#ffffff; margin:0; font-size:26px; letter-spacing:3px; font-weight:800;">5SMAN</h1>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:40px 30px; color:#334155;">
+                      <h2 style="margin-top:0; color:#0f172a; font-size:20px; text-align:center;">Đặt lại mật khẩu</h2>
+                      <p style="font-size:15px; line-height:1.6;">Xin chào <strong>%s</strong>,</p>
+                      <p style="font-size:15px; line-height:1.6;">Chúng tôi đã nhận được yêu cầu thiết lập lại mật khẩu cho tài khoản 5SMan của bạn.</p>
+                      
+                      <div style="text-align:center; margin:35px 0;">
+                        <a href="%s" style="background-color:#dc2626; color:#ffffff; padding:14px 32px; border-radius:8px; text-decoration:none; font-weight:bold; font-size:15px; display:inline-block; box-shadow:0 4px 12px rgba(220,38,38,0.25);">ĐẶT LẠI MẬT KHẨU</a>
+                      </div>
+                      
+                      <p style="font-size:13px; color:#64748b; background-color:#f8fafc; padding:15px; border-radius:8px; border-left:4px solid #dc2626; line-height:1.5;">
+                        🛡️ <strong>Bảo mật:</strong> Đường dẫn có hiệu lực trong <strong>1 giờ</strong>. Nếu bạn không yêu cầu đặt lại mật khẩu, xin hãy bỏ qua email này.
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="background-color:#f8fafc; padding:20px; text-align:center; font-size:12px; color:#94a3b8; border-top:1px solid #e2e8f0;">
+                      &copy; 5SMan Fashion Store. All rights reserved.
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+        """.formatted(customerName, resetLink);
 
         mailService.send(user.getEmail(), forgotSubject, forgotBody);
 

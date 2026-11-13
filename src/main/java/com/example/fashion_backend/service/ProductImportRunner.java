@@ -23,13 +23,17 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProductImportRunner implements CommandLineRunner {
     private final ProductRepository productRepository;
+    @org.springframework.beans.factory.annotation.Autowired private InventoryService inventory;
+    @org.springframework.beans.factory.annotation.Autowired private jakarta.persistence.EntityManager em;
 
     public ProductImportRunner(ProductRepository productRepository) {
         this.productRepository = productRepository;
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public void run(String... args) throws Exception {
+        em.createNativeQuery("select pg_advisory_xact_lock(578314092)").getSingleResult();
         if (productRepository.count() > 0) {
             return;
         }
@@ -51,12 +55,18 @@ public class ProductImportRunner implements CommandLineRunner {
             for (Product product : products) {
                 entities.add(mapProduct(product));
             }
-            productRepository.saveAll(entities);
+            for (var entity : entities) {
+                java.util.Map<ProductSizeVariantEntity,Integer> initial = new java.util.LinkedHashMap<>();
+                entity.getColors().forEach(c -> c.getSizes().forEach(v -> { initial.put(v, v.getInventory()); v.setInventory(0); }));
+                inventory.persistNew(entity);
+                inventory.initialize(entity, initial);
+            }
         }
     }
 
     private ProductEntity mapProduct(Product product) {
         ProductEntity entity = new ProductEntity();
+        entity.setCreatedAt(java.time.OffsetDateTime.now());
         entity.setId(product.getId());
         entity.setSlug(product.getSlug());
         entity.setTitle(product.getTitle());

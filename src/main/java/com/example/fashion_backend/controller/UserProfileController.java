@@ -2,6 +2,7 @@ package com.example.fashion_backend.controller;
 
 import com.example.fashion_backend.dto.user.UserProfileResponse;
 import com.example.fashion_backend.dto.user.UserProfileUpdateRequest;
+import com.example.fashion_backend.dto.user.ProductViewRequest;
 import com.example.fashion_backend.security.UserPrincipal;
 import com.example.fashion_backend.service.UserProfileService;
 import jakarta.validation.Valid;
@@ -10,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,5 +39,12 @@ public class UserProfileController {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
         UUID userId = principal.getUser().getId();
         return ResponseEntity.ok(userProfileService.updateProfile(userId, request));
+    }
+
+    @PostMapping("/product-views")
+    public ResponseEntity<Void> recordView(Authentication authentication, @Valid @RequestBody ProductViewRequest request) {
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        userProfileService.recordProductView(principal.getUser().getId(), request.productId());
+        return ResponseEntity.noContent().build();
     }
 }

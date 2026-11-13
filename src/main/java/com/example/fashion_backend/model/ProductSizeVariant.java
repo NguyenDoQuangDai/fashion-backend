@@ -6,6 +6,9 @@ public class ProductSizeVariant {
     private String sizeId;
     private String size;
     private int inventory;
+    private Long inventoryRevision;
+    public Long getInventoryRevision() { return inventoryRevision; }
+    public void setInventoryRevision(Long value) { inventoryRevision = value; }
     private String sku;
     private BigDecimal price;
     private boolean available;

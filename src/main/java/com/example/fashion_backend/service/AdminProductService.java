@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AdminProductService {
     private final ProductRepository productRepository;
+    @org.springframework.beans.factory.annotation.Autowired private InventoryService inventory;
 
     public AdminProductService(ProductRepository productRepository) {
         this.productRepository = productRepository;
@@ -38,26 +39,58 @@ public class AdminProductService {
 
     @Transactional
     public Product create(Product product) {
+        if (productRepository.existsById(product.getId())) throw new IllegalArgumentException("Product already exists");
         ProductEntity entity = mapToEntity(product);
-        return mapToDto(productRepository.save(entity));
+        java.util.Map<ProductSizeVariantEntity,Integer> initial = new java.util.LinkedHashMap<>();
+        entity.getColors().forEach(c -> c.getSizes().forEach(v -> { initial.put(v,v.getInventory()); v.setInventory(0); }));
+        inventory.persistNew(entity);
+        inventory.lockProducts(List.of(entity.getId()));
+        var sizes = inventory.lockSizes(initial.keySet().stream().map(ProductSizeVariantEntity::getId).toList());
+        initial.forEach((v,q) -> inventory.change(sizes.get(v.getId()), "admin-init:" + v.getId(), "INITIALIZE", q));
+        return mapToDto(entity);
     }
 
     @Transactional
     public Product update(String id, Product product) {
-        ProductEntity existing = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
-        ProductEntity updated = mapToEntity(product);
-        updated.setId(existing.getId());
-        return mapToDto(productRepository.save(updated));
+        inventory.lockProducts(List.of(id));
+        ProductEntity existing = productRepository.findById(id).orElseThrow();
+        ProductEntity input = mapToEntity(product);
+        var locked = inventory.lockSizes(existing.getColors().stream().flatMap(c -> c.getSizes().stream()).map(ProductSizeVariantEntity::getId).toList());
+        if (input.getColors().size() != existing.getColors().size()) throw new IllegalArgumentException("Structural variant edits require separate review");
+        for (var c : existing.getColors()) {
+            var incoming = input.getColors().stream().filter(v -> Objects.equals(v.getColorId(),c.getColorId())).toList();
+            if (incoming.size()!=1 || incoming.get(0).getSizes().size()!=c.getSizes().size()) throw new IllegalArgumentException("Variant identity changed");
+            var ci = incoming.get(0);
+            for (var v : c.getSizes()) {
+                var matches = ci.getSizes().stream().filter(x -> Objects.equals(x.getSizeId(),v.getSizeId())).toList();
+                if(matches.size()!=1) throw new IllegalArgumentException("Size identity changed");
+                var vi = matches.get(0);
+                var dto = product.getColors().stream().filter(x -> Objects.equals(x.getColorId(),c.getColorId())).findFirst().orElseThrow()
+                    .getSizes().stream().filter(x -> Objects.equals(x.getSizeId(),v.getSizeId())).findFirst().orElseThrow();
+                inventory.adminSet(locked.get(v.getId()),vi.getInventory(),dto.getInventoryRevision());
+                v.setSizeName(vi.getSizeName()); v.setSku(vi.getSku()); v.setPrice(vi.getPrice());
+            }
+            c.setColorName(ci.getColorName()); c.setCoverImage(ci.getCoverImage());
+            c.getImages().clear();
+            ci.getImages().forEach(image -> { image.setColorVariant(c); c.getImages().add(image); });
+        }
+        existing.setSlug(input.getSlug()); existing.setTitle(input.getTitle()); existing.setBrand(input.getBrand());
+        existing.setGender(input.getGender()); existing.setCategoryName(input.getCategoryName()); existing.setCategorySlug(input.getCategorySlug());
+        existing.setShortDescription(input.getShortDescription()); existing.setDescription(input.getDescription());
+        existing.setCanonicalUrl(input.getCanonicalUrl()); existing.setPrice(input.getPrice()); existing.setTags(input.getTags());
+        existing.setCoverImage(input.getCoverImage()); existing.setGeneralImages(input.getGeneralImages()); existing.setUrl(input.getUrl());
+        return mapToDto(existing);
     }
 
     @Transactional
     public void delete(String id) {
-        productRepository.deleteById(id);
+        inventory.lockProducts(List.of(id));
+        throw new IllegalArgumentException("Physical product deletion requires historical-reference review");
     }
 
     private ProductEntity mapToEntity(Product product) {
         ProductEntity entity = new ProductEntity();
+        entity.setCreatedAt(java.time.OffsetDateTime.now());
         entity.setId(product.getId());
         entity.setSlug(product.getSlug());
         entity.setTitle(product.getTitle());
@@ -176,6 +209,7 @@ public class AdminProductService {
                 dto.setSizeId(size.getSizeId());
                 dto.setSize(size.getSizeName());
                 dto.setInventory(size.getInventory() == null ? 0 : size.getInventory());
+                dto.setInventoryRevision(size.getInventoryRevision());
                 dto.setSku(size.getSku());
                 dto.setPrice(size.getPrice());
                 dto.setAvailable(size.getInventory() != null && size.getInventory() > 0);

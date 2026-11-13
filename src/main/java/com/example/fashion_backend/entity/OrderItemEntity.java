@@ -46,6 +46,11 @@ public class OrderItemEntity {
     @Column(name = "price_snapshot")
     private BigDecimal priceSnapshot;
 
+    @Column(name = "size_variant_id")
+    private Long sizeVariantId;
+    public Long getSizeVariantId() { return sizeVariantId; }
+    public void setSizeVariantId(Long value) { sizeVariantId = value; }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

@@ -1,8 +1,14 @@
 package com.example.fashion_backend.model;
 
 import java.util.List;
+import java.math.BigDecimal;
+import com.example.fashion_backend.dto.order.DeliveryAddressRequest;
 
 public class Order {
+    private com.example.fashion_backend.entity.PaymentMethod paymentMethod = com.example.fashion_backend.entity.PaymentMethod.COD;
+    public com.example.fashion_backend.entity.PaymentMethod getPaymentMethod() { return paymentMethod; }
+    public void setPaymentMethod(com.example.fashion_backend.entity.PaymentMethod value) { paymentMethod = value; }
+
     private String id;
     private String clientId;
     private String name;
@@ -12,6 +18,17 @@ public class Order {
     private String city;
     private String note;
     private List<CartItem> items;
+    private DeliveryAddressRequest deliveryAddress;
+
+    public DeliveryAddressRequest getDeliveryAddress() { return deliveryAddress; }
+    public void setDeliveryAddress(DeliveryAddressRequest deliveryAddress) { this.deliveryAddress = deliveryAddress; }
+
+    private BigDecimal expectedShippingFee;
+    private BigDecimal expectedTotal;
+    public BigDecimal getExpectedShippingFee() { return expectedShippingFee; }
+    public void setExpectedShippingFee(BigDecimal value) { expectedShippingFee = value; }
+    public BigDecimal getExpectedTotal() { return expectedTotal; }
+    public void setExpectedTotal(BigDecimal value) { expectedTotal = value; }
 
     public Order() {}
 

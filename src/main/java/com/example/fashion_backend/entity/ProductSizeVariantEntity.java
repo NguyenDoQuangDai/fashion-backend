@@ -40,6 +40,11 @@ public class ProductSizeVariantEntity {
     @Column(name = "price_promotion")
     private BigDecimal pricePromotion;
 
+    @Column(name = "inventory_revision", nullable = false)
+    private long inventoryRevision;
+    public long getInventoryRevision() { return inventoryRevision; }
+    public void setInventoryRevision(long value) { inventoryRevision = value; }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

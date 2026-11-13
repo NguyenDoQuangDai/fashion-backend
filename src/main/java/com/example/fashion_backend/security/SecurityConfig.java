@@ -37,10 +37,13 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/payments/vnpay/ipn", "/api/payments/vnpay/*/status").permitAll()
+                    .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/payments/vnpay/create", "/api/payments/vnpay/verify-return").permitAll()
                     .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/search/image").permitAll()
                     .requestMatchers("/api/products/**", "/api/search").permitAll()
-                    .requestMatchers("/api/reviews/**", "/api/recommendations").permitAll()
-                    .requestMatchers("/api/cart/**", "/api/checkout").permitAll()
+                    .requestMatchers("/api/reviews/**", "/api/review-images/**", "/api/recommendations").permitAll()
+                    .requestMatchers("/api/cart/**", "/api/checkout", "/api/checkout/quote", "/api/gogoduk/**", "/api/addresses/**").permitAll()
                     .requestMatchers("/api/chat/**").permitAll()
                     .requestMatchers("/api/admin/**").hasRole("ADMIN")
                     .requestMatchers("/actuator/health").permitAll()
@@ -70,7 +73,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Payment-Token"));
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

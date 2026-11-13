@@ -12,6 +12,7 @@ public class Product {
     private String gender;
     private String categoryName;
     private String categorySlug;
+    private String type;
     private String shortDescription;
     private String description;
     private String canonicalUrl;
@@ -51,6 +52,8 @@ public class Product {
 
     public String getCategorySlug() { return categorySlug; }
     public void setCategorySlug(String categorySlug) { this.categorySlug = categorySlug; }
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
 
     public String getShortDescription() { return shortDescription; }
     public void setShortDescription(String shortDescription) { this.shortDescription = shortDescription; }
